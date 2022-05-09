@@ -13,7 +13,9 @@ import java.nio.ByteBuffer;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 
-public class app {
+
+
+public class app extends Thread {
     private JButton connectButton;
 
     public JPanel getMainPanel() {
@@ -38,13 +40,79 @@ public class app {
     private JButton rotaryRightButton;
     private JTextField infoField;
     private JTextPane datatextPane;
-    private JTextArea dataTextArea;
-    private JPanel dataPanel;
-    private JTextField dataField;
-    private int counter =0;
-public String dane;
-int Odczytane[];
-   private byte[] newData;
+    private JButton pidAvlues;
+
+
+    pidRegulator pid = new pidRegulator();
+
+
+    byte[] sendBufer = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+    private int rotaryLeft;
+
+    private int rotaryRight;
+
+    private int manual;
+
+    private int connected;
+
+    private int start;
+
+    private int stop;
+
+    private boolean startWork = false;
+
+    private int numberPort;
+
+
+    public int getRotaryLeft() {
+        return rotaryLeft;
+    }
+
+    public void setRotaryLeft(int rotaryLeft) {
+        this.rotaryLeft = rotaryLeft;
+    }
+
+    public int getRotaryRight() {
+        return rotaryRight;
+    }
+
+    public void setRotaryRight(int rotaryRight) {
+        this.rotaryRight = rotaryRight;
+    }
+
+    public int getManual() {
+        return manual;
+    }
+
+    public void setManual(int manual) {
+        this.manual = manual;
+    }
+
+
+    public int getConnected() {
+        return connected;
+    }
+
+    public void setConnected(int connected) {
+        this.connected = connected;
+    }
+
+    public int getStart() {
+        return start;
+    }
+
+    public void setStart(int start) {
+        this.start = start;
+    }
+
+    public int getStop() {
+        return stop;
+    }
+
+    public void setStop(int stop) {
+        this.stop = stop;
+    }
 
     public boolean isStartWork() {
         return startWork;
@@ -54,7 +122,6 @@ int Odczytane[];
         this.startWork = startWork;
     }
 
-    private boolean startWork = false;
 
     public void setNumberPort(int numberPort) {
         this.numberPort = numberPort;
@@ -64,17 +131,38 @@ int Odczytane[];
         return numberPort;
     }
 
-    private int numberPort;
+    SerialPort[] comPort = SerialPort.getCommPorts();
 
-    public app(){
+    Thread thread = new Thread(){
+        public void run() {
 
-         SerialPort[] comPort = SerialPort.getCommPorts();
+           // try {
+                toByte(pid, start, stop, manual, rotaryLeft, rotaryRight, startWork);
+                // SerialPort[] comPort = SerialPort.getCommPorts();
+                // compute primes larger than minPrime
+                System.out.println("ff");
+                if (comboBox.getSelectedIndex()>0&&comPort[comboBox.getSelectedIndex()].isOpen() == true) {
+                    System.out.println("ddd");
+
+                    comPort[comboBox.getSelectedIndex()].writeBytes(sendBufer, 8);
+                }else{
+
+                    System.out.println(sendBufer);
+                }
+               // thread.sleep(100);
+          //  } catch (InterruptedException e) {
+           //     e.printStackTrace();
+           // }
+        }
+    };
+
+
+
+    public app() {
+
+        thread.start();
+
         MyComPortListiner listiner = new MyComPortListiner();
-        SerialPort finalPort;
-       // data data=new data();
-        runnable runi = new runnable();
-
-
         connectButton.addActionListener(new ActionListener() {
 
             public String byteToHex(byte num)
@@ -87,18 +175,13 @@ int Odczytane[];
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
-                     //comPort = SerialPort.getCommPorts()[comboBox.getSelectedIndex()];
+
                     comPort[comboBox.getSelectedIndex()].openPort();
-                   // data.setChooseSerial(comboBox.getSelectedIndex());
-                  //  runnable.portnumber=comboBox.getSelectedIndex();
-                   // runi.setId(comboBox.getSelectedIndex());
-                   // runi.start();
+
                     if (comPort[comboBox.getSelectedIndex()].isOpen() == true) {
                         InputStream in =comPort[comboBox.getSelectedIndex()].getInputStream();
                         comPort[comboBox.getSelectedIndex()].addDataListener(new SerialPortDataListener() {
 
-                            String l;
-                            String f;
 
                             @Override
                             public int getListeningEvents() {
@@ -112,10 +195,10 @@ int Odczytane[];
                                 String f="";
 
                                if(  SerialPort.LISTENING_EVENT_DATA_RECEIVED>8 ) {
-                                   // byte[] array = {1, 2, 3, 4};
+
 
                                    byte[] newData = event.getReceivedData();
-                                   //System.out.println("Received data of size: " + newData.length);
+
                                    for (int i = 0; i < newData.length; ++i) {
 
                                        String l=String.valueOf((char) newData[i]);
@@ -140,15 +223,11 @@ int Odczytane[];
         startButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
+
                     startWork =true;
-                    numberPort = comboBox.getSelectedIndex();
-                    comPort[comboBox.getSelectedIndex()].addDataListener(listiner);
+                    start = 1;
+                    stop = 0;
 
-                }catch(IndexOutOfBoundsException y)
-                {
-
-                }
 
 
             }
@@ -158,6 +237,8 @@ int Odczytane[];
             public void actionPerformed(ActionEvent e) {
 
                 startWork = false;
+                stop = 1;
+                start = 0;
 
             }
         });
@@ -166,7 +247,7 @@ int Odczytane[];
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
-                    // comPort = SerialPort.getCommPorts()[0];
+
 
                     comboBox.addItem(SerialPort.getCommPorts()[0]);
                     comboBox.addItem(SerialPort.getCommPorts()[1]);
@@ -185,6 +266,7 @@ int Odczytane[];
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
+                    startWork = false;
               //  comPort = SerialPort.getCommPorts()[comboBox.getSelectedIndex()];
                 comPort[comboBox.getSelectedIndex()].closePort();
                     comPort[comboBox.getSelectedIndex()].removeDataListener();
@@ -200,56 +282,45 @@ int Odczytane[];
             }
         });
 
-        startButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (comPort[comboBox.getSelectedIndex()].isOpen() == true) {
-                    byte[] buff =  {0x00};
 
-                    comPort[comboBox.getSelectedIndex()].writeBytes(buff,1);
-                }
-            }
-        });
-        stopButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (comPort[comboBox.getSelectedIndex()].isOpen() == true) {
-                    byte[] buff =  {0x01};
 
-                    comPort[comboBox.getSelectedIndex()].writeBytes(buff,1);
-                }
-            }
-        });
         rotaryLeftButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (comPort[comboBox.getSelectedIndex()].isOpen() == true) {
-                    byte[] buff =  {0x02};
-
-                    comPort[comboBox.getSelectedIndex()].writeBytes(buff,1);
-                }
+               rotaryLeft = 1;
+               rotaryRight =0;
             }
         });
         rotaryRightButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (comPort[comboBox.getSelectedIndex()].isOpen() == true) {
-                    byte[] buff =  {0x03};
-
-                    comPort[comboBox.getSelectedIndex()].writeBytes(buff,1);
-                }
+                rotaryLeft = 0;
+                rotaryRight =1;
             }
         });
         manualButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (comPort[comboBox.getSelectedIndex()].isOpen() == true) {
-                    byte[] buff =  {0x04};
-
-                    comPort[comboBox.getSelectedIndex()].writeBytes(buff,1);
-                }
+                manual = 1;
+                startWork =false;
             }
 
+        });
+        pidAvlues.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+
+                pid .setVisible(true);
+                pid .pack();
+                pid .setLocationRelativeTo(null);
+                pid .setBounds(420, 0, 220, 220);
+                pid.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+
+
+
+
+            }
         });
     }
 
@@ -258,7 +329,47 @@ int Odczytane[];
         // TODO: place custom component creation code here
     }
 
+    private void toByte(pidRegulator pid , int start , int stop, int manual ,int rotaryLeft, int rotaryRight ,boolean startWork ){
 
+// status sendBuffer = {proportional , integral , derivative , start , stop, manual , rotaryLeft, rotaryRight, workState}
+      //  byte[] sendBufer = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+        sendBufer[0]=(byte)pid.getPidP();
+        sendBufer[1]=(byte)pid.getPidI();
+        sendBufer[2]=(byte)pid.getPidD();
+        sendBufer[3]=(byte)start;
+        sendBufer[4]=(byte)stop;
+        sendBufer[5]=(byte)manual;
+        sendBufer[6]=(byte)rotaryLeft;
+        sendBufer[7]=(byte)rotaryRight;
+
+
+
+
+
+
+        if (startWork == true){
+
+            sendBufer[8]=0x01;
+        }else{
+
+            sendBufer[8]=0x00;
+        }
+
+    }
+
+    public void run() {
+        toByte( pid , start , stop,  manual , rotaryLeft,  rotaryRight ,startWork );
+       // SerialPort[] comPort = SerialPort.getCommPorts();
+        // compute primes larger than minPrime
+        if (comPort[comboBox.getSelectedIndex()].isOpen() == true) {
+
+
+            comPort[comboBox.getSelectedIndex()].writeBytes( sendBufer,8);
+        }
+
+
+    }
 }
 
 
